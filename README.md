@@ -1,5 +1,5 @@
 # Compute centerpoint of 2D points in linear time (by ham-sandwich partition)
-Implementing the paper "Computing a Centerpoint of a Finite Planar Set of Points in Linear Time"
+Implementation of the paper ["Computing a Centerpoint of a Finite Planar Set of Points in Linear Time"](https://link.springer.com/content/pdf/10.1007%2FBF02574382.pdf).
 
 
 ## Instruction
