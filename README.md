@@ -3,7 +3,11 @@ Implementation of the paper ["Computing a Centerpoint of a Finite Planar Set of 
 
 
 ## Instruction
+```
 Run main.py to start. Change point number in main.py.
+```
 
 ## Dependencies
+```
 pip install shapely
+```
