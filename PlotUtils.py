@@ -1,6 +1,42 @@
 import numpy as np
-import random
 from matplotlib import pyplot as plt
+
+
+def prepare_plot(point_set):
+    plt.ion()
+    plt.show()
+    plt.title('Points')
+    x_min, x_max = find_x_bounds(point_set)
+    interval = Interval(x_min - 0, x_max + 0)
+    y_min, y_max = find_y_bounds(point_set)
+    prepare_axis(interval.l - 5, interval.r + 5, y_min - 5, y_max + 5)
+    plot_point_set(point_set)
+    plt.pause(1)
+
+
+def find_x_bounds(point_set):
+    min_x = min(point_set, key=lambda P: P.x).x
+    max_x = max(point_set, key=lambda P: P.x).x
+    return min_x, max_x
+
+
+def find_y_bounds(point_set):
+    min_y = min(point_set, key=lambda P: P.y).y
+    max_y = max(point_set, key=lambda P: P.y).y
+    return min_y, max_y
+
+
+class Interval:
+    def __init__(self, l, r):
+        self.l = l
+        self.r = r
+        assert l <= r
+
+    def __str__(self):
+        return 'Interval from {} to {}'.format(self.l, self.r)
+
+    def __len__(self):
+        return int(self.r - self.l)
 
 
 def prepare_axis(min_x=-10, max_x=10, min_y=-10, max_y=10):
@@ -40,22 +76,21 @@ def plot_point(P, marker='o', color='b', size=5):
     plt.draw()
 
 
-
 def plot_points_and_duals(ham_instance, t=0.5):
     for p, d in zip(ham_instance.red_points, ham_instance.red_duals):
         plot_point(p, color='r')
         plt.draw()
-        #plt.pause(t)
+        # plt.pause(t)
         plot_line(d, color='r')
         plt.draw()
-        #plt.pause(t)
+        # plt.pause(t)
     for p, d in zip(ham_instance.blue_points, ham_instance.blue_duals):
         plot_point(p, color='b')
         plt.draw()
-        #plt.pause(t)
+        # plt.pause(t)
         plot_line(d, color='b')
         plt.draw()
-        #plt.pause(t)
+        # plt.pause(t)
 
 
 def plot_point_set(point_set, color='b'):
@@ -63,11 +98,6 @@ def plot_point_set(point_set, color='b'):
         plot_point(p, color=color)
 
 
-
 def plot_interval(I, linestyle=':', color='g'):
     plot_vertical_line(I.l, linestyle=linestyle, color=color, linewidth=2)
     plot_vertical_line(I.r, linestyle=linestyle, color=color, linewidth=2)
-
-
-def plot_fill_between():
-    pass

@@ -1,10 +1,12 @@
 import math
 
 from shapely.geometry import Point
+from shapely.geometry import MultiPoint
 
+import random
+
+import numpy as np
 from PlotUtils import *
-
-random.seed(0)
 
 
 class Line:
@@ -26,7 +28,7 @@ class Interval:
     def __init__(self, l, r):
         self.l = l
         self.r = r
-        assert l < r
+        assert l <= r
 
     def __str__(self):
         return 'Interval from {} to {}'.format(self.l, self.r)
@@ -41,16 +43,36 @@ class Intersection:
             self.x = np.inf
             self.y = np.inf
         else:
-            self.x = (line2.b - line1.b) / (line2.m - line1.m)
+            self.x = (line2.b - line1.b) / (line1.m - line2.m)
             self.y = line1.m * self.x + line1.b
 
+
+def get_intersections(lines, interval):
+    intersections = []
+    dual_num = len(lines)
+    for i in range(dual_num):
+        for j in range(i):
+            d1 = lines[i]
+            d2 = lines[j]
+            new_inter = Intersection(d1, d2)
+            if new_inter.x == np.inf:
+                pass
+            elif interval.l < new_inter.x and interval.r > new_inter.x:
+                intersections.append(new_inter)
+            else:
+                pass
+    intersections.sort(key=lambda I: I.x)
+    return intersections
+
+
 def line_over_two_points(p1, p2):
-    if p1.x==p2.x:
+    if p1.x == p2.x:
         return Line(np.inf, 0)
     else:
-        k = (p2.y-p1.y) / (p2.x-p1.x)
-        b = -p1.x * ((p2.y-p1.y)/(p2.x-p1.x)) + p1.y
+        k = (p2.y - p1.y) / (p2.x - p1.x)
+        b = -p1.x * ((p2.y - p1.y) / (p2.x - p1.x)) + p1.y
     return Line(k, b)
+
 
 def find_x_bounds(point_set):
     min_x = min(point_set, key=lambda P: P.x).x
@@ -81,6 +103,27 @@ def random_point_set(n, lower=-10, upper=10):
         y = random.uniform(lower, upper)
         points.append(Point(x, y))
     return points
+
+
+def get_Radon_point(p1, p2, p3, p4):
+    convex_hull = MultiPoint([p1,p2,p3,p4]).convex_hull
+    line_13 = line_over_two_points(p1, p3)
+    line_24 = line_over_two_points(p2, p4)
+    Radon_point = Point(Intersection(line_13, line_24).x,Intersection(line_13, line_24).y)
+    if Radon_point.within(convex_hull):
+        return Radon_point
+    else:
+        line_12 = line_over_two_points(p1, p2)
+        line_34 = line_over_two_points(p3, p4)
+        Radon_point = Point(Intersection(line_12, line_34).x, Intersection(line_12, line_34).y)
+        if Radon_point.within(convex_hull):
+            return Radon_point
+        else:
+            line_14 = line_over_two_points(p1, p4)
+            line_23 = line_over_two_points(p2, p3)
+            Radon_point = Point(Intersection(line_14, line_23).x, Intersection(line_14, line_23).y)
+            return Radon_point
+
 
 
 def point_transfer(p, x0, y0, line):
