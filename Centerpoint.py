@@ -104,7 +104,7 @@ class Centerpoint:
         leftmost = Point(leftmost_x, leftmost_y)
         slope = [(p.y - leftmost.y) / (p.x - leftmost.x) for p in self.point_set if
                  not p == leftmost and not p.x == leftmost.x]
-        equal_x_num = len([p for p in self.point_set if p.x == leftmost.x and p.y >= leftmost.y])
+        equal_x_num = len([p for p in self.point_set if p.x == leftmost.x and p.y > leftmost.y])
         # slope_sorted = sorted(slope, reverse=True)
         slope_np = sorted(slope, reverse=True)[self.np - 1 - 1 - equal_x_num]
         slope_np_index = slope.index(slope_np)
@@ -255,7 +255,7 @@ class Centerpoint:
             plot_point_set(self.points_RU, color='m')
             plot_point_set(self.points_RD, color='k')
             plt.pause(1)
-            # ¬end = input('Press enter to end the next step')
+            end = input('Press enter to end the next step')
 
     def replace_points(self):
         Radon_point_set = []
@@ -263,11 +263,13 @@ class Centerpoint:
             p_LU, p_LD, p_RU, p_RD = self.points_LU.pop(), self.points_LD.pop(), self.points_RU.pop(), self.points_RD.pop()
             Radon_point = get_Radon_point(p_LU, p_RU, p_RD, p_LD)
             Radon_point_set.append(Radon_point)
-            self.point_set.remove(p_LU)
-            self.point_set.remove(p_LD)
-            self.point_set.remove(p_RU)
-            self.point_set.remove(p_RD)
-            self.point_set.append(Radon_point)
+            for p in [p_LU, p_LD, p_RU, p_RD]:
+                try:
+                    self.point_set.remove(p)
+                except:
+                    pass
+            if not math.isnan(Radon_point.x) and not math.isnan(Radon_point.y):
+                self.point_set.append(Radon_point)
         if self.plot:
             plt.clf()
             prepare_plot(self.point_set)
