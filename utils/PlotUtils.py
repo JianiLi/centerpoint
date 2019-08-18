@@ -7,7 +7,7 @@ def prepare_plot(point_set):
     plt.show()
     plt.title('Points')
     x_min, x_max = find_x_bounds(point_set)
-    interval = Interval(x_min - 0, x_max + 0)
+    interval = Interval(x_min - 10, x_max + 10)
     y_min, y_max = find_y_bounds(point_set)
     prepare_axis(interval.l - 5, interval.r + 5, y_min - 5, y_max + 5)
     plot_point_set(point_set)
@@ -48,8 +48,8 @@ def prepare_axis(min_x=-10, max_x=10, min_y=-10, max_y=10):
     max_y = int(max_y)
     ax.set_xlim(min_x, max_x)
     ax.set_ylim(min_y, max_y)
-    plt.xticks(np.arange(min(np.array(ax.get_xlim())), max(np.array(ax.get_xlim())) + 1, 1.0))
-    plt.yticks(np.arange(min(np.array(ax.get_ylim())), max(np.array(ax.get_ylim())) + 1, 1.0))
+    plt.xticks(np.arange(min(np.array(ax.get_xlim())), max(np.array(ax.get_xlim())) + 1, int((max_x-min_x)/10)))
+    plt.yticks(np.arange(min(np.array(ax.get_ylim())), max(np.array(ax.get_ylim())) + 1, int((max_y-min_y)/10)))
     plt.gca().set_aspect('equal', adjustable='box')
     plt.axhline(0, color='black')
     plt.axvline(0, color='black')
@@ -76,15 +76,15 @@ def plot_point(P, marker='o', color='b', size=5):
     plt.draw()
 
 
-def plot_points_and_duals(ham_instance, t=0.5):
-    for p, d in zip(ham_instance.red_points, ham_instance.red_duals):
+def plot_points_and_duals(red_points, blue_points, red_duals, blue_duals, t=0.5):
+    for p, d in zip(red_points, red_duals):
         plot_point(p, color='r')
         plt.draw()
         # plt.pause(t)
         plot_line(d, color='r')
         plt.draw()
         # plt.pause(t)
-    for p, d in zip(ham_instance.blue_points, ham_instance.blue_duals):
+    for p, d in zip(blue_points, blue_duals):
         plot_point(p, color='b')
         plt.draw()
         # plt.pause(t)

@@ -1,12 +1,11 @@
 import math
-
+import numpy as np
+import random
 from shapely.geometry import Point
 from shapely.geometry import MultiPoint
+from shapely.geometry import LineString
 
-import random
-
-import numpy as np
-from PlotUtils import *
+from utils.PlotUtils import *
 
 
 class Line:
@@ -47,22 +46,18 @@ class Intersection:
             self.y = line1.m * self.x + line1.b
 
 
-def get_intersections(lines, interval):
-    intersections = []
-    dual_num = len(lines)
-    for i in range(dual_num):
-        for j in range(i):
-            d1 = lines[i]
-            d2 = lines[j]
-            new_inter = Intersection(d1, d2)
-            if new_inter.x == np.inf:
-                pass
-            elif interval.l < new_inter.x and interval.r > new_inter.x:
-                intersections.append(new_inter)
-            else:
-                pass
-    intersections.sort(key=lambda I: I.x)
-    return intersections
+def remove_repeat_points(point_set):
+    points = [(p.x, p.y) for p in point_set if not p.x == np.inf and not p.y == np.inf]
+    points = list(set(points))
+    point_set = [Point(p[0], p[1]) for p in points]
+
+    return point_set
+
+
+def find_corner_points(point_set):
+    convex_hull = MultiPoint(point_set).convex_hull
+    corner_points = [p for p in point_set if not p.within(convex_hull)]
+    return corner_points
 
 
 def line_over_two_points(p1, p2):
