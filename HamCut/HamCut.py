@@ -134,8 +134,8 @@ class HamCut:
 
 if __name__ == '__main__':
     random.seed(1)
-    n_red = 1000
-    n_blue = 1000
+    n_red = 5000
+    n_blue = 5000
     red_points = []
     blue_points = []
     num_need_red = int(n_red / 12)

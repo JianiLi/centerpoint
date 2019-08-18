@@ -6,7 +6,7 @@ from shapely.geometry import MultiPoint
 from shapely.geometry import LineString
 
 from utils.PlotUtils import *
-
+from utils.utils import *
 
 class Line:
     def __init__(self, m, b):
@@ -44,6 +44,8 @@ class Intersection:
         else:
             self.x = (line2.b - line1.b) / (line1.m - line2.m)
             self.y = line1.m * self.x + line1.b
+
+
 
 
 def remove_repeat_points(point_set):
@@ -101,23 +103,44 @@ def random_point_set(n, lower=-10, upper=10):
 
 
 def get_Radon_point(p1, p2, p3, p4):
+    point_set = [p1,p2,p3,p4]
     convex_hull = MultiPoint([p1,p2,p3,p4]).convex_hull
-    line_13 = line_over_two_points(p1, p3)
-    line_24 = line_over_two_points(p2, p4)
-    Radon_point = Point(Intersection(line_13, line_24).x,Intersection(line_13, line_24).y)
-    if Radon_point.within(convex_hull):
-        return Radon_point
+    if p1.within(convex_hull):
+        return p1
+    elif p2.within(convex_hull):
+        return p2
+    elif p3.within(convex_hull):
+        return p3
+    elif p4.within(convex_hull):
+        return p4
     else:
-        line_12 = line_over_two_points(p1, p2)
-        line_34 = line_over_two_points(p3, p4)
-        Radon_point = Point(Intersection(line_12, line_34).x, Intersection(line_12, line_34).y)
-        if Radon_point.within(convex_hull):
-            return Radon_point
-        else:
-            line_14 = line_over_two_points(p1, p4)
-            line_23 = line_over_two_points(p2, p3)
-            Radon_point = Point(Intersection(line_14, line_23).x, Intersection(line_14, line_23).y)
-            return Radon_point
+        for a, b in zip([(p1,p3),(p1,p2),(p1,p4)], [(p2,p4),(p3,p4),(p2,p3)]):
+            line1 = line_over_two_points(a[0],a[1])
+            line2 = line_over_two_points(b[0],b[1])
+            Radon_point = Point(Intersection(line1, line2).x,Intersection(line1, line2).y)
+            if Radon_point.within(convex_hull):
+                return Radon_point
+        X = [p.x for p in point_set]
+        med_x = findKthLargest(X, 2)
+        index = X.index(med_x)
+        return Point(point_set[index].x, point_set[index].y)
+
+        # line_13 = line_over_two_points(p1, p3)
+        # line_24 = line_over_two_points(p2, p4)
+        # Radon_point = Point(Intersection(line_13, line_24).x,Intersection(line_13, line_24).y)
+        # if Radon_point.within(convex_hull):
+        #     return Radon_point
+        # else:
+        #     line_12 = line_over_two_points(p1, p2)
+        #     line_34 = line_over_two_points(p3, p4)
+        #     Radon_point = Point(Intersection(line_12, line_34).x, Intersection(line_12, line_34).y)
+        #     if Radon_point.within(convex_hull):
+        #         return Radon_point
+        #     else:
+        #         line_14 = line_over_two_points(p1, p4)
+        #         line_23 = line_over_two_points(p2, p3)
+        #         Radon_point = Point(Intersection(line_14, line_23).x, Intersection(line_14, line_23).y)
+        #         return Radon_point
 
 
 

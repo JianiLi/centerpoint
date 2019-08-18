@@ -45,22 +45,23 @@ class Centerpoint:
         while cur_point_num < last_point_num:
             last_point_num = len(self.point_set)
             self.__init__(self.point_set, plot=self.plot)
-            try:
-                self.find_L_boundary()
-                self.find_U_boundary()
-                self.find_D_boundary()
-                self.find_R_boundary()
-                self.find_intersections()
-                self.replace_points()
-                self.point_set = remove_repeat_points(self.point_set)
-                cur_point_num = len(self.point_set)
-                print("point number: %d" % cur_point_num)
-            except:
-                pass
+            # try:
+            self.find_L_boundary()
+            self.find_U_boundary()
+            self.find_D_boundary()
+            self.find_R_boundary()
+            self.find_intersections()
+            self.replace_points()
+            self.point_set = remove_repeat_points(self.point_set)
+            cur_point_num = len(self.point_set)
+            print("point number: %d" % cur_point_num)
+            # except:
+            #    pass
         self.brute_force_centerpoint()
 
     def brute_force_centerpoint(self):
         centerpoints = []
+        self.point_set = remove_repeat_points(self.point_set)
         remaining_points = copy.deepcopy(self.point_set)
 
         while len(self.point_set) >= 4:
@@ -95,15 +96,16 @@ class Centerpoint:
         leftmost = Point(leftmost_x, leftmost_y)
 
         slope = [(p.y - leftmost.y) / (p.x - leftmost.x) for p in self.point_set if
-                 not p == leftmost and not p.x == leftmost.x]
+                 not (p == leftmost or p.x == leftmost.x)]
 
-        equal_x_num = len([p for p in self.point_set if p.x == leftmost.x and p.y > leftmost.y])
+        equal_x_num = len([p for p in self.point_set if (p.x == leftmost.x and p.y > leftmost.y)])
 
         slope_np = findKthLargest(slope, self.np - 1 - equal_x_num)
         slope_np_index = slope.index(slope_np)
 
         index_before_num = len([p for p in self.point_set if
-                                p.x == leftmost.x and p.y >= leftmost.y and self.point_set.index(p) <= slope_np_index])
+                                (p.x == leftmost.x and p.y >= leftmost.y and self.point_set.index(
+                                    p) <= slope_np_index)])
         L_boundary_point = self.point_set[slope_np_index + index_before_num]
 
         self.L_boundary_line = Line((L_boundary_point.y - leftmost.y) / (L_boundary_point.x - leftmost.x),
@@ -114,7 +116,8 @@ class Centerpoint:
         self.points_not_in_L = [p for p in self.point_set if
                                 p.y < p.x * self.L_boundary_line.m + self.L_boundary_line.b - 1e-5]
         self.points_in_L_boundary = [p for p in self.point_set if
-                                     p not in self.points_in_L and p not in self.points_not_in_L]
+                                     (p.y <= p.x * self.L_boundary_line.m + self.L_boundary_line.b + 1e-5 and
+                                      p.y >= p.x * self.L_boundary_line.m + self.L_boundary_line.b - 1e-5)]
         if self.plot:
             plt.clf()
             prepare_plot(self.point_set)
@@ -133,10 +136,12 @@ class Centerpoint:
         points_not_in_L_trans = [point_transfer(p, x0, y0, self.L_boundary_line) for p in self.points_not_in_L]
         if not points_in_L_trans == [] and not points_not_in_L_trans == []:
             above = True if self.L_boundary_line.m >= 0 else False
-            (red_points, blue_points) = (points_in_L_trans, points_not_in_L_trans) if points_in_L_trans[0].x < points_not_in_L_trans[0].x \
+            (red_points, blue_points) = (points_in_L_trans, points_not_in_L_trans) if points_in_L_trans[0].x < \
+                                                                                      points_not_in_L_trans[0].x \
                 else (points_not_in_L_trans, points_in_L_trans)
-            (red_num_need, blue_num_need) = (self.mp - 1, self.np - self.mp - 1) if red_points == points_in_L_trans else (
-                                            self.np - self.mp - 1, self.mp - 1)
+            (red_num_need, blue_num_need) = (
+                self.mp - 1, self.np - self.mp - 1) if red_points == points_in_L_trans else (
+                self.np - self.mp - 1, self.mp - 1)
 
             hamcut = HamCut()
             ham_cut_trans = hamcut.reduce_then_cut(red_points, blue_points, red_num_need, blue_num_need, above=above)
@@ -155,7 +160,8 @@ class Centerpoint:
                 self.points_in_U, self.points_not_in_U = self.points_not_in_U, self.points_in_U
 
             self.points_in_U_boundary = [p for p in self.point_set if
-                                         p not in self.points_in_U and p not in self.points_not_in_U]
+                                         (p.y <= p.x * self.U_boundary_line.m + self.U_boundary_line.b + 1e-5 and
+                                          p.y >= p.x * self.U_boundary_line.m + self.U_boundary_line.b - 1e-5)]
             if self.plot:
                 plt.title('Find U boundary')
                 plot_line(self.U_boundary_line, color='k')
@@ -174,7 +180,8 @@ class Centerpoint:
             (red_points, blue_points) = (points_in_L_trans, points_not_in_L_trans) if points_in_L_trans[0].x < \
                                                                                       points_not_in_L_trans[0].x \
                 else (points_not_in_L_trans, points_in_L_trans)
-            (red_num_need, blue_num_need) = (self.mp - 1, self.np - self.mp - 1) if red_points == points_in_L_trans else (
+            (red_num_need, blue_num_need) = (
+                self.mp - 1, self.np - self.mp - 1) if red_points == points_in_L_trans else (
                 self.np - self.mp - 1, self.mp - 1)
 
             hamcut = HamCut()
@@ -195,7 +202,8 @@ class Centerpoint:
             if len(self.points_in_D) > len(self.points_not_in_D):
                 self.points_in_D, self.points_not_in_D = self.points_not_in_D, self.points_in_D
             points_in_D_boundary = [p for p in self.point_set if
-                                    p not in self.points_in_D and p not in self.points_not_in_D]
+                                    (p.y <= p.x * self.D_boundary_line.m + self.D_boundary_line.b + 1e-5 and
+                                     p.y >= p.x * self.D_boundary_line.m + self.D_boundary_line.b - 1e-5)]
             if self.plot:
                 plt.title('Find D boundary')
                 plot_line(self.U_boundary_line, color='g')
@@ -211,12 +219,14 @@ class Centerpoint:
         points_in_U_trans = [point_transfer(p, x0, y0, self.U_boundary_line) for p in self.points_in_U]
         points_not_in_U_trans = [point_transfer(p, x0, y0, self.U_boundary_line) for p in self.points_not_in_U]
 
-        #above = True if self.U_boundary_line.m < 0 else False
-        if not points_in_U_trans==[] and not points_not_in_U_trans==[]:
-            (red_points, blue_points) = (points_in_U_trans, points_not_in_U_trans) if points_in_U_trans[0].x < points_not_in_U_trans[0].x \
+        # above = True if self.U_boundary_line.m < 0 else False
+        if not points_in_U_trans == [] and not points_not_in_U_trans == []:
+            (red_points, blue_points) = (points_in_U_trans, points_not_in_U_trans) if points_in_U_trans[0].x < \
+                                                                                      points_not_in_U_trans[0].x \
                 else (points_not_in_U_trans, points_in_U_trans)
-            (red_num_need, blue_num_need) = (self.mp - 1, self.np - self.mp - 1) if red_points == points_in_U_trans else (
-                                            self.np - self.mp - 1, self.mp - 1)
+            (red_num_need, blue_num_need) = (
+                self.mp - 1, self.np - self.mp - 1) if red_points == points_in_U_trans else (
+                self.np - self.mp - 1, self.mp - 1)
 
             hamcut = HamCut()
             ham_cut_trans = hamcut.reduce_then_cut(red_points, blue_points, red_num_need, blue_num_need, above=False)
@@ -235,7 +245,8 @@ class Centerpoint:
                 self.points_in_R, self.points_not_in_R = self.points_not_in_R, self.points_in_R
 
             points_in_R_boundary = [p for p in self.point_set if
-                                    p not in self.points_in_R and p not in self.points_not_in_R]
+                                    (p.y <= p.x * self.R_boundary_line.m + self.R_boundary_line.b + 1e-5 and
+                                     p.y >= p.x * self.R_boundary_line.m + self.R_boundary_line.b - 1e-5)]
             if self.plot:
                 plt.title('Find R boundary')
                 plot_line(self.U_boundary_line, color='g')
@@ -248,10 +259,18 @@ class Centerpoint:
                 # end = input('Press enter to the next step')
 
     def find_intersections(self):
-        self.points_LU = [p for p in self.points_in_L if p in self.points_in_U]
-        self.points_LD = [p for p in self.points_in_L if p in self.points_in_D]
-        self.points_RU = [p for p in self.points_in_R if p in self.points_in_U]
-        self.points_RD = [p for p in self.points_in_R if p in self.points_in_D]
+        set_L = set([(p.x, p.y) for p in self.points_in_L])
+        set_U = set([(p.x, p.y) for p in self.points_in_U])
+        set_R = set([(p.x, p.y) for p in self.points_in_R])
+        set_D = set([(p.x, p.y) for p in self.points_in_D])
+        set_LU = list(set_L.intersection(set_U))
+        set_LD = list(set_L.intersection(set_D))
+        set_RU = list(set_R.intersection(set_U))
+        set_RD = list(set_R.intersection(set_D))
+        self.points_LU = [Point(p[0], p[1]) for p in set_LU]
+        self.points_LD = [Point(p[0], p[1]) for p in set_LD]
+        self.points_RU = [Point(p[0], p[1]) for p in set_RU]
+        self.points_RD = [Point(p[0], p[1]) for p in set_RD]
 
         if self.plot:
             plt.title('Find P_LU, P_LD, P_RU, P_RD')
