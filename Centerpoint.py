@@ -1,6 +1,7 @@
 import copy
 
 from HamCut.HamCut import *
+from TverbergPoint.TverbergPoint import *
 from utils.GeoUtils import *
 from utils.utils import *
 
@@ -45,46 +46,39 @@ class Centerpoint:
         while cur_point_num < last_point_num:
             last_point_num = len(self.point_set)
             self.__init__(self.point_set, plot=self.plot)
-            # try:
-            self.find_L_boundary()
-            self.find_U_boundary()
-            self.find_D_boundary()
-            self.find_R_boundary()
-            self.find_intersections()
-            self.replace_points()
-            self.point_set = remove_repeat_points(self.point_set)
-            cur_point_num = len(self.point_set)
-            print("point number: %d" % cur_point_num)
-            # except:
-            #    pass
-        self.brute_force_centerpoint()
+            try:
+                self.find_L_boundary()
+                self.find_U_boundary()
+                self.find_D_boundary()
+                self.find_R_boundary()
+                self.find_intersections()
+                self.replace_points()
+                self.point_set = remove_repeat_points(self.point_set)
+                cur_point_num = len(self.point_set)
+                print("point number: %d" % cur_point_num)
+            except:
+               pass
+        return self.brute_force_centerpoint()
 
     def brute_force_centerpoint(self):
         centerpoints = []
         self.point_set = remove_repeat_points(self.point_set)
-        remaining_points = copy.deepcopy(self.point_set)
 
-        while len(self.point_set) >= 4:
-            p_corner = find_corner_points(self.point_set)[0:4]
-            for p in p_corner:
-                self.point_set.remove(p)
-            if len(p_corner) == 4:
-                Radon_point = get_Radon_point(p_corner[0], p_corner[1], p_corner[2], p_corner[3])
-                self.point_set.append(Radon_point)
-
-        # finally only three cases arise: 1/2/3 points remaining
-        if len(self.point_set) == 1:
-            centerpoints.append(self.point_set[0])
-        elif len(self.point_set) == 2:
-            centerpoints.append(LineString([self.point_set[0], self.point_set[1]]).centroid)
-        else:
-            centerpoints.append(LineString([self.point_set[0], self.point_set[1], self.point_set[2]]).centroid)
+        Tverp = TverbergPoint()
+        tvp = Tverp.getTvbPoint(self.point_set)
+        centerpoints.append(tvp)
 
         for cp in centerpoints:
             print("Centerpoints: %.2f, %.2f" % (cp.x, cp.y))
         if self.plot:
+            plt.clf()
+            x_min, x_max = find_x_bounds(self.point_set)
+            interval = Interval(x_min - 10, x_max + 10)
+            y_min, y_max = find_y_bounds(self.point_set)
+            prepare_axis(interval.l - 5, interval.r + 5, y_min - 5, y_max + 5)
+            plot_point_set(self.point_set, color='b')
             plt.title('Centerpoint: %.2f, %.2f' % (centerpoints[0].x, centerpoints[0].y))
-            plot_point_set(remaining_points, color='b')
+            #plot_point_set(remaining_points, color='b')
             plot_point(centerpoints[0], color='r')
             plt.pause(1)
             end = input('Press enter to the next step')
@@ -263,14 +257,18 @@ class Centerpoint:
         set_U = set([(p.x, p.y) for p in self.points_in_U])
         set_R = set([(p.x, p.y) for p in self.points_in_R])
         set_D = set([(p.x, p.y) for p in self.points_in_D])
-        set_LU = list(set_L.intersection(set_U))
-        set_LD = list(set_L.intersection(set_D))
-        set_RU = list(set_R.intersection(set_U))
-        set_RD = list(set_R.intersection(set_D))
-        self.points_LU = [Point(p[0], p[1]) for p in set_LU]
-        self.points_LD = [Point(p[0], p[1]) for p in set_LD]
-        self.points_RU = [Point(p[0], p[1]) for p in set_RU]
-        self.points_RD = [Point(p[0], p[1]) for p in set_RD]
+        set_all_points = set([(p.x, p.y) for p in self.point_set])
+        set_LU = set_L.intersection(set_U)
+        set_LD = set_L.intersection(set_D)
+        set_RU = set_R.intersection(set_U)
+        set_RD = set_R.intersection(set_D)
+        set_points_in_intersection = set_LU.union(set_LD).union(set_RU).union(set_RD)
+        set_points_not_in_intersection = set_all_points.difference(set_points_in_intersection)
+        self.points_LU = [Point(p[0], p[1]) for p in list(set_LU)]
+        self.points_LD = [Point(p[0], p[1]) for p in list(set_LD)]
+        self.points_RU = [Point(p[0], p[1]) for p in list(set_RU)]
+        self.points_RD = [Point(p[0], p[1]) for p in list(set_RD)]
+        self.points_not_in_intersection = [Point(p[0], p[1]) for p in list(set_points_not_in_intersection)]
 
         if self.plot:
             plt.title('Find P_LU, P_LD, P_RU, P_RD')
@@ -288,13 +286,17 @@ class Centerpoint:
             p_LU, p_LD, p_RU, p_RD = self.points_LU.pop(), self.points_LD.pop(), self.points_RU.pop(), self.points_RD.pop()
             Radon_point = get_Radon_point(p_LU, p_RU, p_RD, p_LD)
             Radon_point_set.append(Radon_point)
-            for p in [p_LU, p_LD, p_RU, p_RD]:
-                try:
-                    self.point_set.remove(p)
-                except:
-                    pass
             if not math.isnan(Radon_point.x) and not math.isnan(Radon_point.y):
-                self.point_set.append(Radon_point)
+                self.points_not_in_intersection.append(Radon_point)
+
+        set_LU = set([(p.x, p.y) for p in self.points_LU])
+        set_LD = set([(p.x, p.y) for p in self.points_LD])
+        set_RU = set([(p.x, p.y) for p in self.points_RU])
+        set_RD = set([(p.x, p.y) for p in self.points_RD])
+        set_points_not_in_intersection = set([(p.x, p.y) for p in self.points_not_in_intersection])
+        set_all_points = set_points_not_in_intersection.union(set_LU).union(set_LD).union(set_RU).union(set_RD)
+        self.point_set = [Point(p[0], p[1]) for p in list(set_all_points)]
+
         if self.plot:
             plt.clf()
             prepare_plot(self.point_set)
