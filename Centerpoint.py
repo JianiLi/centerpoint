@@ -1,7 +1,8 @@
 import copy
 
+from shapely.geometry import Polygon
+
 from HamCut.HamCut import *
-from TverbergPoint.TverbergPoint import *
 from utils.GeoUtils import *
 from utils.utils import *
 
@@ -57,16 +58,64 @@ class Centerpoint:
                 cur_point_num = len(self.point_set)
                 print("point number: %d" % cur_point_num)
             except:
-               pass
+                pass
         return self.brute_force_centerpoint()
 
     def brute_force_centerpoint(self):
         centerpoints = []
         self.point_set = remove_repeat_points(self.point_set)
+        remaining_points = copy.deepcopy(self.point_set)
 
-        Tverp = TverbergPoint()
-        tvp = Tverp.getTvbPoint(self.point_set)
-        centerpoints.append(tvp)
+        while len(self.point_set) > 6:
+            p_corner = find_corner_points(self.point_set)[0:4]
+            for p in p_corner:
+                self.point_set.remove(p)
+            if len(p_corner) == 4:
+                Radon_point = get_Radon_point(p_corner[0], p_corner[1], p_corner[2], p_corner[3])
+                self.point_set.append(Radon_point)
+
+        # get r = math.ceil(n/3) Tverberg point for <= 6 points
+        p_set = set([(p.x, p.y) for p in self.point_set])
+        p_size = len(self.point_set)
+        if p_size == 1:
+            centerpoints.append(self.point_set[0])
+        elif p_size <= 3:
+            centerpoints.append(LineString([p for p in self.point_set]).centroid)
+        elif p_size == 4:
+            c = MultiPoint(self.point_set).convex_hull
+            inside_points = [p for p in self.point_set if p.within(c)]
+            if inside_points == []:
+                centerpoints.append(
+                    get_Radon_point(self.point_set[0], self.point_set[1], self.point_set[2], self.point_set[3]))
+            else:
+                centerpoints.append(inside_points[0])
+
+        else:
+            for i in range(0, p_size):
+                for j in (j for j in range(0, p_size) if j > i):
+                    for k in (k for k in range(0, p_size) if k > j):
+                        subset1 = set([(p.x, p.y) for p in [self.point_set[i], self.point_set[j], self.point_set[k]]])
+                        subset2 = p_set.difference(subset1)
+                        p1 = Polygon([p for p in subset1])
+                        try:
+                            p2 = Polygon([p for p in subset2])
+                        except:
+                            try:
+                                p2 = LineString([p for p in subset2])
+                            except:
+                                p2 = Point([p for p in subset2])
+
+                        inter = p1.intersection(p2)
+                        if not inter.is_empty:
+                            cp = inter.centroid
+                            centerpoints.append(cp)
+                            break
+                    else:
+                        continue
+                    break
+                else:
+                    continue
+                break
 
         for cp in centerpoints:
             print("Centerpoints: %.2f, %.2f" % (cp.x, cp.y))
@@ -76,9 +125,9 @@ class Centerpoint:
             interval = Interval(x_min - 10, x_max + 10)
             y_min, y_max = find_y_bounds(self.point_set)
             prepare_axis(interval.l - 5, interval.r + 5, y_min - 5, y_max + 5)
-            plot_point_set(self.point_set, color='b')
+            plot_point_set(remaining_points, color='b')
             plt.title('Centerpoint: %.2f, %.2f' % (centerpoints[0].x, centerpoints[0].y))
-            #plot_point_set(remaining_points, color='b')
+            # plot_point_set(remaining_points, color='b')
             plot_point(centerpoints[0], color='r')
             plt.pause(1)
             end = input('Press enter to the next step')
