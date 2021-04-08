@@ -110,15 +110,15 @@ class Centerpoint:
         # self.point_set = remove_repeat_points(self.point_set)
 
         point_set = [Point(p.x + 0.0001 * random.random(), p.y + 0.0001 * random.random()) for p in point_set]
-        # while len(point_set) > 6:
-        #     p_corner = find_corner_points(point_set)[0:4]
-        #     if len(p_corner) == 1:
-        #         return p_corner
-        #     for p in p_corner:
-        #         point_set.remove(p)
-        #     if len(p_corner) == 4:
-        #         Radon_point = get_Radon_point(p_corner[0], p_corner[1], p_corner[2], p_corner[3])
-        #         point_set.append(Radon_point)
+        while len(point_set) > 10:
+            p_corner = find_corner_points(point_set)[0:4]
+            if len(p_corner) == 1:
+                return p_corner
+            for p in p_corner:
+                point_set.remove(p)
+            if len(p_corner) == 4:
+                Radon_point = get_Radon_point(p_corner[0], p_corner[1], p_corner[2], p_corner[3])
+                point_set.append(Radon_point)
 
         remaining_points = deepcopy(point_set)
 
