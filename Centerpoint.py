@@ -1,4 +1,5 @@
-import copy
+import itertools
+from copy import deepcopy
 
 from shapely.geometry import Polygon
 
@@ -8,14 +9,8 @@ from utils.utils import *
 
 
 class Centerpoint:
-    def __init__(self, point_set, plot=False):
-        self.point_set = point_set
-        self.n = len(point_set)
-        self.np = math.ceil(self.n / 3)
-        self.mp = math.ceil(self.n / 3) - math.ceil(self.n / 4)
-
-        self.x_min, self.x_max = find_x_bounds(self.point_set)
-        self.y_min, self.y_max = find_y_bounds(self.point_set)
+    def __init__(self, plot=False):
+        self.point_set = None
 
         self.points_in_L = None
         self.points_not_in_L = None
@@ -40,13 +35,61 @@ class Centerpoint:
 
         self.plot = plot
 
-    def reduce_then_get_centerpoint(self):
+    def initialize(self, point_set):
+        self.point_set = point_set
+        self.n = len(self.point_set)
+        self.np = math.ceil(self.n / 3)
+        self.mp = math.ceil(self.n / 3) - math.ceil(self.n / 4)
+        self.x_min, self.x_max = find_x_bounds(self.point_set)
+        self.y_min, self.y_max = find_y_bounds(self.point_set)
+
+    def getSafeCenterPoint(self, point_set):
+        cp = []
+
+        # determine if points are in the same line, if so, add small noise
+        # point_set = set([(p.x, p.y) for p in self.point_set])
+        self.point_set = deepcopy(point_set)
+        leftmost = Point(min(self.point_set, key=lambda P: P.x).x, min(self.point_set, key=lambda P: P.x).y)
+        rightmost = Point(max(self.point_set, key=lambda P: P.x).x, max(self.point_set, key=lambda P: P.x).y)
+        l = LineString([leftmost, rightmost])
+        oneLine = True
+        for p in self.point_set:
+            if p not in [leftmost, rightmost]:
+                contain = l.contains(p)
+                oneLine = oneLine and contain
+        if oneLine:
+            point_set = [Point(p.x + 0.0001 * random.random(), p.y + 0.0001 * random.random()) for p in point_set]
+
+        for d in range(0, 3):
+            self.point_set = deepcopy(point_set)
+            l = Line(0.1 * (d + 1), 0)
+            p_trans = [point_transfer(p, 0, 0, l) for p in self.point_set]
+            try:
+                cp_trans = self.reduce_then_get_centerpoint(p_trans)
+                cp_trans_back = point_transfer_back(cp_trans, 0, 0, l)
+                cp.append(cp_trans_back)
+            except:
+                pass
+
+        try:
+            safe_point = Polygon([[p.x, p.y] for p in cp]).centroid
+        except:
+            try:
+                safe_point = LineString([p for p in cp]).centroid
+            except:
+                safe_point = cp[0]
+
+        return safe_point
+
+    def reduce_then_get_centerpoint(self, point_set):
+        point_set = [Point(p.x + 0.0001 * random.random(), p.y + 0.0001 * random.random()) for p in point_set]
+        self.point_set = point_set
         last_point_num = len(self.point_set)
         cur_point_num = 0
         print("point number: %d" % last_point_num)
         while cur_point_num < last_point_num:
             last_point_num = len(self.point_set)
-            self.__init__(self.point_set, plot=self.plot)
+            self.initialize(self.point_set)
             try:
                 self.find_L_boundary()
                 self.find_U_boundary()
@@ -54,84 +97,64 @@ class Centerpoint:
                 self.find_R_boundary()
                 self.find_intersections()
                 self.replace_points()
-                self.point_set = remove_repeat_points(self.point_set)
+                # self.point_set = remove_repeat_points(self.point_set)
                 cur_point_num = len(self.point_set)
                 print("point number: %d" % cur_point_num)
             except:
                 pass
-        return self.brute_force_centerpoint()
+            cur_point_num = len(self.point_set)
+        # return self.brute_force_centerpoint_old(self.point_set)
+        return self.brute_force_centerpoint(self.point_set)
 
-    def brute_force_centerpoint(self):
-        centerpoints = []
-        self.point_set = remove_repeat_points(self.point_set)
-        remaining_points = copy.deepcopy(self.point_set)
+    def brute_force_centerpoint(self, point_set):
+        # self.point_set = remove_repeat_points(self.point_set)
 
-        while len(self.point_set) > 6:
-            p_corner = find_corner_points(self.point_set)[0:4]
-            for p in p_corner:
-                self.point_set.remove(p)
-            if len(p_corner) == 4:
-                Radon_point = get_Radon_point(p_corner[0], p_corner[1], p_corner[2], p_corner[3])
-                self.point_set.append(Radon_point)
+        point_set = [Point(p.x + 0.0001 * random.random(), p.y + 0.0001 * random.random()) for p in point_set]
+        # while len(point_set) > 6:
+        #     p_corner = find_corner_points(point_set)[0:4]
+        #     if len(p_corner) == 1:
+        #         return p_corner
+        #     for p in p_corner:
+        #         point_set.remove(p)
+        #     if len(p_corner) == 4:
+        #         Radon_point = get_Radon_point(p_corner[0], p_corner[1], p_corner[2], p_corner[3])
+        #         point_set.append(Radon_point)
 
-        # get r = math.ceil(n/3) Tverberg point for <= 6 points
-        p_set = set([(p.x, p.y) for p in self.point_set])
-        p_size = len(self.point_set)
-        if p_size == 1:
-            centerpoints.append(self.point_set[0])
-        elif p_size <= 3:
-            centerpoints.append(LineString([p for p in self.point_set]).centroid)
-        elif p_size == 4:
-            c = MultiPoint(self.point_set).convex_hull
-            inside_points = [p for p in self.point_set if p.within(c)]
-            if inside_points == []:
-                centerpoints.append(
-                    get_Radon_point(self.point_set[0], self.point_set[1], self.point_set[2], self.point_set[3]))
+        remaining_points = deepcopy(point_set)
+
+        n = len(point_set)
+        f = math.ceil(n / 3) - 1
+        # for i in range(nCr(n, n-f)):
+        empty_inter = True
+        iter_set = list(itertools.combinations(point_set, n - f))
+        random.shuffle(iter_set)
+        for point_set in iter_set:
+            if empty_inter:
+                inter = Polygon([p for p in point_set]).convex_hull
+                # inter = inter.buffer(0)
+                empty_inter = False
             else:
-                centerpoints.append(inside_points[0])
-
-        else:
-            for i in range(0, p_size):
-                for j in (j for j in range(0, p_size) if j > i):
-                    for k in (k for k in range(0, p_size) if k > j):
-                        subset1 = set([(p.x, p.y) for p in [self.point_set[i], self.point_set[j], self.point_set[k]]])
-                        subset2 = p_set.difference(subset1)
-                        p1 = Polygon([p for p in subset1])
-                        try:
-                            p2 = Polygon([p for p in subset2])
-                        except:
-                            try:
-                                p2 = LineString([p for p in subset2])
-                            except:
-                                p2 = Point([p for p in subset2])
-
-                        inter = p1.intersection(p2)
-                        if not inter.is_empty:
-                            cp = inter.centroid
-                            centerpoints.append(cp)
-                            break
-                    else:
-                        continue
+                polygon = Polygon([p for p in point_set]).convex_hull
+                # polygon = polygon.buffer(0)
+                inter = polygon.intersection(inter)
+                if inter.geom_type == 'Point':
                     break
-                else:
-                    continue
-                break
-
-        for cp in centerpoints:
-            print("Centerpoints: %.2f, %.2f" % (cp.x, cp.y))
+        cp = inter.centroid
+        # for cp in centerpoints:
+        #    print("Centerpoints: %.2f, %.2f" % (cp.x, cp.y))
         if self.plot:
             plt.clf()
-            x_min, x_max = find_x_bounds(self.point_set)
+            x_min, x_max = find_x_bounds(point_set)
             interval = Interval(x_min - 10, x_max + 10)
-            y_min, y_max = find_y_bounds(self.point_set)
+            y_min, y_max = find_y_bounds(point_set)
             prepare_axis(interval.l - 5, interval.r + 5, y_min - 5, y_max + 5)
             plot_point_set(remaining_points, color='b')
-            plt.title('Centerpoint: %.2f, %.2f' % (centerpoints[0].x, centerpoints[0].y))
+            plt.title('Centerpoint: %.2f, %.2f' % (cp.x, cp.y))
             # plot_point_set(remaining_points, color='b')
-            plot_point(centerpoints[0], color='r')
+            plot_point(cp, color='r')
             plt.pause(1)
             end = input('Press enter to the next step')
-        return centerpoints[0]
+        return cp
 
     def find_L_boundary(self):
         leftmost_x = min(self.point_set, key=lambda P: P.x).x
